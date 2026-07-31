@@ -1,20 +1,18 @@
 #!/usr/bin/env bash
 # ============================================================
-#  install.sh — установка личного VPN на ДВА сервера (RU вход -> NL выход).
+#  install.sh — установка личного VPN.
+#  Режимы: (1) два сервера Россия+зарубеж  /  (2) только зарубеж.
 #
-#  Запуск ОДНОЙ строкой в терминале (Mac / Linux / Windows-WSL):
+#  Запуск ОДНОЙ строкой (Mac / Linux / Windows-WSL):
+#     bash -c "$(curl -fsSL https://2server-privacy.vercel.app/install.sh)"
 #
-#     bash -c "$(curl -fsSL https://ВАШ_ДОМЕН/install.sh)"
-#
-#  Ничего скачивать, распаковывать и выдавать права НЕ нужно.
-#  Серверные скрипты встроены прямо сюда (ниже, в base64).
+#  Серверные скрипты встроены ниже (base64). Права/распаковка не нужны.
 # ============================================================
 set -Eeuo pipefail
 IFS=$'\n\t'
-
 say() { printf '%s\n' "$*"; }
 
-# ── sshpass: нужен один раз, чтобы зайти на сервер по root-паролю ──
+# ── sshpass (нужен один раз, чтобы зайти на сервер по root-паролю) ──
 command -v sshpass >/dev/null 2>&1 || {
   say "Первый запуск: ставлю вспомогательную утилиту sshpass..."
   if command -v brew >/dev/null 2>&1; then
@@ -27,8 +25,7 @@ command -v sshpass >/dev/null 2>&1 || {
   say ""
   say "Не получилось поставить sshpass автоматически."
   if [[ "$(uname)" == "Darwin" ]]; then
-    say "Поставь Homebrew (открой https://brew.sh, вставь их команду в Терминал),"
-    say "потом снова вставь команду установки VPN."
+    say "Поставь Homebrew (https://brew.sh), потом снова вставь команду установки VPN."
   else
     say "Поставь вручную: sudo apt-get install -y sshpass — и повтори."
   fi
@@ -50,7 +47,7 @@ B64_ENTRY
 
 chmod +x "$STAGE/server/install_vpn.sh" "$STAGE/server/install_entry.sh"
 
-# ── ввод данных ──
+# ── функции ввода ──
 ask() {
   local var="$1" label="$2" def="${3:-}" val="${!1:-}"
   [[ -n "$val" ]] && return 0
@@ -66,34 +63,53 @@ ask_secret() {
 }
 q() { printf "%q" "$1"; }
 
-say "== Личный VPN · два сервера (RU вход -> NL выход) =="
+# ── выбор режима ──
+say "============================================================"
+say " Личный VPN — установка"
+say "============================================================"
 say ""
+say "Что ставим?"
+say "  1 — ДВА сервера: Россия + зарубеж (на каждый день, обходит блокировки)"
+say "  2 — ТОЛЬКО зарубежный сервер (быстрее, но без обхода российских блокировок)"
+say ""
+MODE="${MODE:-}"
+while [[ "$MODE" != "1" && "$MODE" != "2" ]]; do
+  read -r -p "Введите 1 или 2 и нажмите Enter: " MODE
+done
+say ""
+
+# ── данные зарубежного сервера (нужны в обоих режимах) ──
 say "-- Зарубежный сервер (ВЫХОД, напр. Нидерланды) --"
-ask        HOST_EXIT     "IP зарубежного сервера (выход)"
+ask        HOST_EXIT     "IP зарубежного сервера"
 ask_secret PASS_EXIT     "Root-пароль зарубежного сервера"
 ask        DOMAIN_EXIT   "Домен выхода (de.вашдомен, A-запись уже на IP выхода)"
 say ""
-say "-- Российский сервер (ВХОД) --"
-ask        HOST_ENTRY    "IP российского сервера (вход)"
-ask_secret PASS_ENTRY    "Root-пароль российского сервера"
-ask        DOMAIN_ENTRY  "Домен входа (ru.вашдомен, A-запись уже на IP входа)"
-say ""
+
+if [[ "$MODE" == "1" ]]; then
+  say "-- Российский сервер (ВХОД) --"
+  ask        HOST_ENTRY    "IP российского сервера"
+  ask_secret PASS_ENTRY    "Root-пароль российского сервера"
+  ask        DOMAIN_ENTRY  "Домен входа (ru.вашдомен, A-запись уже на IP входа)"
+  say ""
+fi
 ask        EMAIL         "Email для сертификатов Let's Encrypt"
 
 SSH_PORT="${SSH_PORT:-22}"
-for v in HOST_EXIT PASS_EXIT DOMAIN_EXIT HOST_ENTRY PASS_ENTRY DOMAIN_ENTRY EMAIL; do
-  [[ -n "${!v:-}" ]] || { say "Не заполнено: $v"; exit 1; }
-done
+if [[ "$MODE" == "1" ]]; then
+  REQ=(HOST_EXIT PASS_EXIT DOMAIN_EXIT HOST_ENTRY PASS_ENTRY DOMAIN_ENTRY EMAIL)
+else
+  REQ=(HOST_EXIT PASS_EXIT DOMAIN_EXIT EMAIL)
+fi
+for v in "${REQ[@]}"; do [[ -n "${!v:-}" ]] || { say "Не заполнено: $v"; exit 1; }; done
 
 mkdir -p "$HOME/.ssh"
 SSH_BASE=(-p "$SSH_PORT" -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$HOME/.ssh/known_hosts")
 run_on()  { local host="$1" pass="$2"; shift 2; SSHPASS="$pass" sshpass -e ssh "${SSH_BASE[@]}" "root@${host}" "$@"; }
 copy_to() { SSHPASS="$2" sshpass -e scp -P "$SSH_PORT" -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$HOME/.ssh/known_hosts" "$3" "root@${1}:$4"; }
-
 REMOTE_DIR="/tmp/vpn-quickstart-stage"
 
-# ── ШАГ 1: зарубежный выход ──
-say ""; say "==> [1/2] Поднимаю ЗАРУБЕЖНЫЙ выход на $HOST_EXIT ..."
+# ── зарубежный выход (оба режима) ──
+say ""; say "==> Поднимаю ЗАРУБЕЖНЫЙ выход на $HOST_EXIT ..."
 ENV_EXIT="$STAGE/vpn_inputs.env"
 { echo "DOMAIN=$(q "$DOMAIN_EXIT")"; echo "EMAIL=$(q "$EMAIL")"; } > "$ENV_EXIT"; chmod 600 "$ENV_EXIT"
 run_on  "$HOST_EXIT" "$PASS_EXIT" "rm -rf $(q "$REMOTE_DIR") && mkdir -p $(q "$REMOTE_DIR")/server && chmod 700 $(q "$REMOTE_DIR")"
@@ -101,14 +117,26 @@ copy_to "$HOST_EXIT" "$PASS_EXIT" "$STAGE/server/install_vpn.sh" "$REMOTE_DIR/se
 copy_to "$HOST_EXIT" "$PASS_EXIT" "$ENV_EXIT" "$REMOTE_DIR/vpn_inputs.env"
 run_on  "$HOST_EXIT" "$PASS_EXIT" "cd $(q "$REMOTE_DIR") && chmod +x server/install_vpn.sh && bash server/install_vpn.sh $(q "$REMOTE_DIR")/vpn_inputs.env"
 
-say "==> Забираю UUID выхода"
 EXIT_LINK="$(run_on "$HOST_EXIT" "$PASS_EXIT" "cat /root/vpn-link.txt")"
 EXIT_UUID="$(printf '%s' "$EXIT_LINK" | sed -n 's#^vless://\([^@]*\)@.*#\1#p')"
-[[ -n "$EXIT_UUID" ]] || { say "Не удалось получить UUID выхода из ссылки: $EXIT_LINK"; exit 1; }
-say "UUID выхода получен."
+[[ -n "$EXIT_UUID" ]] || { say "Не удалось получить UUID выхода: $EXIT_LINK"; exit 1; }
+NL_LINK="${EXIT_LINK%%#*}#VPN-Zarubezh-only"
 
-# ── ШАГ 2: российский вход + сцепка ──
-say ""; say "==> [2/2] Поднимаю РОССИЙСКИЙ вход на $HOST_ENTRY и сцепляю с выходом ..."
+# ── режим 2: только зарубеж — одна ссылка ──
+if [[ "$MODE" == "2" ]]; then
+  say ""
+  say "############################################################"
+  say "ГОТОВО. Зарубежный сервер поднят: $DOMAIN_EXIT -> интернет"
+  say ""
+  say ">>> ВАША ССЫЛКА (только зарубежный сервер) — вставьте в приложение Happ:"
+  say ""
+  say "$NL_LINK"
+  say "############################################################"
+  exit 0
+fi
+
+# ── режим 1: российский вход + сцепка ──
+say ""; say "==> Поднимаю РОССИЙСКИЙ вход на $HOST_ENTRY и сцепляю с выходом ..."
 ENV_ENTRY="$STAGE/entry_inputs.env"
 { echo "DOMAIN=$(q "$DOMAIN_ENTRY")"; echo "EMAIL=$(q "$EMAIL")"; echo "EXIT_DOMAIN=$(q "$DOMAIN_EXIT")"; echo "EXIT_UUID=$(q "$EXIT_UUID")"; } > "$ENV_ENTRY"; chmod 600 "$ENV_ENTRY"
 run_on  "$HOST_ENTRY" "$PASS_ENTRY" "rm -rf $(q "$REMOTE_DIR") && mkdir -p $(q "$REMOTE_DIR")/server && chmod 700 $(q "$REMOTE_DIR")"
@@ -116,14 +144,24 @@ copy_to "$HOST_ENTRY" "$PASS_ENTRY" "$STAGE/server/install_entry.sh" "$REMOTE_DI
 copy_to "$HOST_ENTRY" "$PASS_ENTRY" "$ENV_ENTRY" "$REMOTE_DIR/entry_inputs.env"
 run_on  "$HOST_ENTRY" "$PASS_ENTRY" "cd $(q "$REMOTE_DIR") && chmod +x server/install_entry.sh && bash server/install_entry.sh $(q "$REMOTE_DIR")/entry_inputs.env"
 
-say "==> Забираю финальную ссылку"
 FINAL_LINK="$(run_on "$HOST_ENTRY" "$PASS_ENTRY" "cat /root/vpn-link.txt")"
+CHAIN_LINK="${FINAL_LINK%%#*}#VPN-Rossiya-plus-Zarubezh"
 
 say ""
-say "============================================================"
-say "ГОТОВО. Цепочка: телефон -> $DOMAIN_ENTRY (RU) -> $DOMAIN_EXIT (выход) -> интернет"
+say "############################################################"
+say "ГОТОВО. У вас ДВЕ ссылки — добавьте обе в Happ как два профиля:"
 say ""
-say "Ссылка для подключения (вставь в приложение Happ):"
+say "------------------------------------------------------------"
+say ">>> [1] ОСНОВНАЯ  —  Россия + зарубеж"
+say "    На каждый день. Обходит блокировки, работает и на РФ-сайтах,"
+say "    и на зарубежных. Цепочка: $DOMAIN_ENTRY (RU) -> $DOMAIN_EXIT (выход)."
 say ""
-say "$FINAL_LINK"
-say "============================================================"
+say "$CHAIN_LINK"
+say "------------------------------------------------------------"
+say ">>> [2] БЫСТРАЯ  —  только зарубеж"
+say "    Максимальная скорость. Для зарубежных сервисов, когда"
+say "    интернет стабильный и доступ к РФ-ресурсам не нужен."
+say ""
+say "$NL_LINK"
+say "------------------------------------------------------------"
+say "############################################################"
