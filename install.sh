@@ -144,6 +144,15 @@ copy_to "$HOST_ENTRY" "$PASS_ENTRY" "$STAGE/server/install_entry.sh" "$REMOTE_DI
 copy_to "$HOST_ENTRY" "$PASS_ENTRY" "$ENV_ENTRY" "$REMOTE_DIR/entry_inputs.env"
 run_on  "$HOST_ENTRY" "$PASS_ENTRY" "cd $(q "$REMOTE_DIR") && chmod +x server/install_entry.sh && bash server/install_entry.sh $(q "$REMOTE_DIR")/entry_inputs.env"
 
+# ── ГАРАНТИЯ: принудительно синхронизируем UUID вход↔выход ──
+# Берём ЖИВОЙ UUID из конфига выхода и вписываем его в chain-outbound входа.
+# Это исключает рассинхрон — главную причину «подключается, но не грузит».
+say "==> Синхронизирую UUID вход<->выход (защита от рассинхрона)"
+EXIT_UUID_LIVE="$(run_on "$HOST_EXIT" "$PASS_EXIT" "grep -oE '[0-9a-f-]{36}' /usr/local/etc/xray/config.json | head -1" || true)"
+if [[ -n "$EXIT_UUID_LIVE" ]]; then
+  run_on "$HOST_ENTRY" "$PASS_ENTRY" "python3 -c 'import json,sys; p=\"/usr/local/etc/xray/config.json\"; c=json.load(open(p)); [o[\"settings\"][\"vnext\"][0][\"users\"][0].__setitem__(\"id\", sys.argv[1]) for o in c.get(\"outbounds\",[]) if o.get(\"tag\")==\"chain\"]; json.dump(c,open(p,\"w\"))' $(q "$EXIT_UUID_LIVE") && systemctl restart xray-clean" || true
+fi
+
 FINAL_LINK="$(run_on "$HOST_ENTRY" "$PASS_ENTRY" "cat /root/vpn-link.txt")"
 CHAIN_LINK="${FINAL_LINK%%#*}#VPN-Rossiya-plus-Zarubezh"
 
