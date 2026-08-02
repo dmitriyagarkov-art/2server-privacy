@@ -44,7 +44,10 @@ body { font-family: 'Montserrat', -apple-system, 'Segoe UI', sans-serif; backgro
 .read-progress { position: fixed; top: 0; left: 0; height: 3px; width: 0; background: var(--accent); z-index: 60; box-shadow: 0 0 8px var(--accent-glow); }
 header { position: sticky; top: 0; z-index: 50; background: var(--header-bg); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-bottom: 1px solid var(--border); transition: background .4s ease, border-color var(--transition); }
 header.scrolled { background: var(--header-bg-scrolled); border-bottom-color: transparent; }
-.header-inner { display: flex; align-items: center; justify-content: space-between; height: 68px; gap: 16px; }
+.header-inner { display: flex; align-items: center; justify-content: space-between; height: 68px; gap: 12px; min-width: 0; }
+.brand { min-width: 0; flex-shrink: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nav-right { flex-shrink: 0; }
+.cta-short { display: none; }
 .nav-left { display: flex; align-items: center; gap: 6px; }
 .nav-right { display: flex; align-items: center; gap: 10px; }
 .brand { font-weight: 900; font-size: 15px; letter-spacing: -.3px; color: var(--text); text-decoration: none; }
@@ -62,7 +65,7 @@ header.scrolled { background: var(--header-bg-scrolled); border-bottom-color: tr
 .article-hero .lead-italic { font-size: 16px; line-height: 1.6; color: var(--text-dim); font-style: italic; margin-bottom: 24px; }
 .article-meta { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; font-size: 13px; color: var(--text-dim); font-weight: 500; padding-bottom: 28px; border-bottom: 1px solid var(--border); }
 .article-meta .author { display: inline-flex; align-items: center; gap: 8px; color: var(--text); font-weight: 700; }
-.author-avatar { width: 28px; height: 28px; border-radius: 50%; background: var(--accent); color: var(--accent-contrast); display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 900; }
+.author-avatar { width: 28px; height: 28px; border-radius: 50%; background: var(--accent); color: var(--accent-contrast); display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 900; object-fit: cover; flex-shrink: 0; }
 .article-body { padding: 36px 0 56px; font-size: 16.5px; line-height: 1.75; }
 .article-body p { margin-bottom: 20px; }
 .article-body h2 { font-size: 28px; font-weight: 800; letter-spacing: -.5px; line-height: 1.25; margin: 46px 0 18px; }
@@ -139,7 +142,9 @@ footer { border-top: 1px solid var(--border); padding: 36px 0 44px; }
 .footer-copy { font-size: 12.5px; color: var(--text-dim); }
 @media (max-width: 640px) {
   .nav-left { display: none; }
-  .nav-cta { font-size: 12px; padding: 9px 13px; }
+  .nav-cta { font-size: 12.5px; padding: 9px 14px; }
+  .cta-full { display: none; }
+  .cta-short { display: inline; }
   .article-body { font-size: 15.5px; }
   .cta-box { padding: 30px 22px; }
   .download-card { flex-wrap: wrap; }
@@ -160,7 +165,7 @@ footer { border-top: 1px solid var(--border); padding: 36px 0 44px; }
     </nav>
     <div class="nav-right">
       <button class="theme-toggle" id="themeToggle" title="Переключить тему" aria-label="Переключить тему">🌙</button>
-      <a href="https://dmitriymarketing.com/chatgpt" class="nav-cta">🔓 Доступ к «ИИ на практике»</a>
+      <a href="https://dmitriymarketing.com/chatgpt" class="nav-cta"><span class="cta-full">🔓 Доступ к «ИИ на практике»</span><span class="cta-short">🔓 Доступ</span></a>
     </div>
   </div>
 </header>
@@ -172,7 +177,7 @@ footer { border-top: 1px solid var(--border); padding: 36px 0 44px; }
     <div class="subtitle">Быстрый, стабильный, без блокировок от нейросетей и других сервисов</div>
     <p class="lead-italic">Пошаговая инструкция по созданию собственного VPN для доступа к зарубежным ресурсам и русским сайтам (Госуслуги, банковские приложения) — без переключений.</p>
     <div class="article-meta">
-      <span class="author"><span class="author-avatar">D</span> Dmitriymarketing</span>
+      <span class="author"><img class="author-avatar" src="images/avatar.jpg" alt="Dmitriymarketing" width="28" height="28"> Dmitriymarketing</span>
       <span>⏱ ~1–1,5 часа на всё</span>
     </div>
   </div>
@@ -373,16 +378,17 @@ footer { border-top: 1px solid var(--border); padding: 36px 0 44px; }
     <p>Дальше <b>ничего не трогаем</b>. Программа сама зайдёт на оба сервера и всё установит. Пара минут — и готово.</p>
     <div class="callout callout-success">
       <span class="icon">🔥</span>
-      <div>В конце установщик выдаст ссылку для приложения. Если вы ставили <b>два сервера</b> — ссылок будет <b>две</b>, и обе подписаны (какую когда использовать — в следующем шаге).</div>
+      <div>В конце установщик выдаст ссылку для приложения. Если вы ставили <b>два сервера</b> — ссылок будет <b>три</b>, и все подписаны (какую когда использовать — в следующем шаге).</div>
     </div>
 
     <h3 id="step7"><span class="badge">Шаг 7</span><br>Подключаемся через приложение Happ</h3>
-    <p>Когда установщик закончит, он выдаст <b>ссылку</b> вида <code class="inline">vless://...</code>. Если вы ставили <b>два сервера</b>, ссылок будет две — и обе подписаны:</p>
+    <p>Когда установщик закончит, он выдаст <b>ссылку</b> вида <code class="inline">vless://...</code>. Если вы ставили <b>два сервера</b>, ссылок будет три — и все подписаны:</p>
     <ul class="styled">
       <li><b>Основная — Россия + зарубеж.</b> На каждый день: обходит блокировки, работает и на российских сайтах, и на зарубежных.</li>
       <li><b>Быстрая — только зарубеж.</b> Максимальная скорость — для зарубежных сервисов, когда интернет стабильный и доступ к РФ-ресурсам не нужен.</li>
+      <li><b>Российская — только Россия.</b> Весь трафик через российский сервер, российский IP — для доступа к российским сервисам, например когда вы за границей.</li>
     </ul>
-    <p>Копируем нужную ссылку целиком (можно добавить обе — переключаться будете одним тапом) и:</p>
+    <p>Копируем нужную ссылку целиком (можно добавить все — переключаться будете одним тапом) и:</p>
     <ol class="styled">
       <li>Ставим приложение <b>Happ</b> (iPhone, Android или компьютер).</li>
       <li>Нажимаем <b>плюсик</b> → «добавить по ссылке / из буфера».</li>
