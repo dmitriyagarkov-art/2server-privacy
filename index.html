@@ -342,15 +342,22 @@ footer { border-top: 1px solid var(--border); padding: 36px 0 44px; }
 
     <h3 id="step6"><span class="badge">Шаг 6</span><br>Запускаем установку одной командой</h3>
     <p>Ничего скачивать и распаковывать не нужно — вся установка делается одной строчкой в терминале.</p>
-    <p><b>Открываем терминал:</b></p>
-    <ul class="styled">
-      <li><b>Mac</b> — нажмите иконку поиска (лупа) в правом верхнем углу экрана, напишите «Терминал» и откройте его.</li>
-      <li><b>Windows</b> — откройте приложение «Терминал» (или PowerShell). Если он скажет, что нужен WSL — один раз выполните <code class="inline">wsl --install</code>, перезагрузитесь и вернитесь сюда.</li>
-    </ul>
-    <p>Копируем команду ниже, вставляем в терминал и жмём <b>Enter</b>:</p>
+    <p><b>Открываем терминал и берём команду для своей системы</b> — Mac и Windows отличаются, возьмите свою строку:</p>
+
+    <p style="margin-bottom:8px"><b>🍎 На Mac.</b> Нажмите иконку поиска (лупа) в правом верхнем углу экрана, напишите «Терминал» и откройте его. Затем скопируйте и вставьте эту команду, нажмите <b>Enter</b>:</p>
     <div class="cmd-box">
       <code id="installCmd">bash -c "$(curl -fsSL https://2server-privacy.vercel.app/install.sh)"</code>
       <button class="cmd-copy" onclick="copyCmd(this)">Копировать</button>
+    </div>
+
+    <p style="margin-bottom:8px"><b>🪟 На Windows.</b> Нажмите «Пуск», напишите <b>PowerShell</b> и откройте его (обычный, ничего дополнительно ставить не нужно — WSL не требуется). Скопируйте и вставьте эту команду, нажмите <b>Enter</b>:</p>
+    <div class="cmd-box">
+      <code>irm https://2server-privacy.vercel.app/install.ps1 | iex</code>
+      <button class="cmd-copy" onclick="copyCmd(this)">Копировать</button>
+    </div>
+    <div class="callout callout-info">
+      <span class="icon">💡</span>
+      <div>Обе команды делают одно и то же — просто выберите ту, что под вашу систему. Дальше всё одинаково: установщик сам спросит данные серверов и в конце выдаст ссылки.</div>
     </div>
     <p>Первым делом установщик спросит, <b>что ставим</b>:</p>
     <ul class="styled">
@@ -369,7 +376,7 @@ footer { border-top: 1px solid var(--border); padding: 36px 0 44px; }
     </div>
     <div class="callout callout-warning">
       <span class="icon">‼️</span>
-      <div>Когда вы вставляете пароль в терминале, он может не отображаться. Это нормально — просто нажимайте «Ctrl+V», чтобы вставить, и дальше «Enter».</div>
+      <div>Когда вы вставляете пароль в терминале, он может не отображаться. Это нормально — просто вставьте его (Windows — «Ctrl+V» или правый клик, Mac — «Cmd+V») и нажмите «Enter».</div>
     </div>
     <figure class="article-img">
       <img src="images/10-terminal.jpg" alt="Скрин терминала">
@@ -478,7 +485,8 @@ window.addEventListener('scroll', () => {
   document.getElementById('readProgress').style.width = (h.scrollTop / (h.scrollHeight - h.clientHeight) * 100) + '%';
 }, { passive: true });
 function copyCmd(btn) {
-  const text = document.getElementById('installCmd').innerText;
+  const codeEl = btn.parentElement.querySelector('code');
+  const text = codeEl ? codeEl.innerText : document.getElementById('installCmd').innerText;
   const done = () => { const o = btn.textContent; btn.classList.add('copied'); btn.textContent = '✓ Скопировано'; setTimeout(() => { btn.classList.remove('copied'); btn.textContent = o; }, 2000); };
   if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).then(done).catch(() => fbCopy(text, done)); }
   else { fbCopy(text, done); }
